@@ -7,24 +7,111 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: system-ui; background: #0f172a; color: white; }
-        .glass { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+        .preview-img { max-width: 100%; border-radius: 10px; margin-top: 20px; }
     </style>
 </head>
 <body class="p-4">
-    <div class="max-w-md mx-auto">
-        <h1 class="text-2xl font-bold mb-4 text-center">🦷 DentalAI</h1>
-        <div class="glass rounded-xl p-6 text-center">
+    <div class="max-w-md mx-auto text-center">
+        <h1 class="text-2xl font-bold mb-4">🦷 DentalAI</h1>
+        
+        <!-- Upload Section -->
+        <div id="uploadSection" class="bg-white/5 border border-white/10 rounded-xl p-6">
             <p class="text-gray-400 mb-4">X-Ray Analysis Ready</p>
-            <input type="file" id="file" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('file').click()" class="bg-blue-600 px-6 py-3 rounded-lg w-full">
+            <input type="file" id="fileInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg w-full transition">
                 Upload X-Ray
             </button>
         </div>
+
+        <!-- Preview Section (Hidden initially) -->
+        <div id="previewSection" class="hidden bg-white/5 border border-white/10 rounded-xl p-6 mt-4">
+            <p class="text-gray-400 mb-4">Analyzing...</p>
+            <img id="previewImg" class="preview-img">
+            <div class="mt-4 space-y-2">
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="statusText" class="text-sm text-gray-400">Processing...</p>
+            </div>
+            <button onclick="reset()" class="mt-4 text-red-400 hover:text-red-300 text-sm">
+                ← Upload New
+            </button>
+        </div>
+
+        <!-- Results Section (Hidden initially) -->
+        <div id="resultSection" class="hidden bg-white/5 border border-white/10 rounded-xl p-6 mt-4 text-left">
+            <h3 class="font-bold text-green-400 mb-2">✓ Analysis Complete</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Caries Detection:</span>
+                    <span class="text-yellow-400">2 found</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Confidence:</span>
+                    <span class="text-green-400">94%</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Bone Density:</span>
+                    <span class="text-blue-400">Normal</span>
+                </div>
+            </div>
+        </div>
     </div>
+
     <script>
-        document.getElementById('file').addEventListener('change', (e) => {
-            if(e.target.files[0]) alert('File selected: ' + e.target.files[0].name);
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const previewSection = document.getElementById('previewSection');
+        const resultSection = document.getElementById('resultSection');
+        const previewImg = document.getElementById('previewImg');
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('statusText');
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show preview section
+            uploadSection.classList.add('hidden');
+            previewSection.classList.remove('hidden');
+
+            // Load and show image
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                previewImg.src = event.target.result;
+                
+                // Simulate AI analysis progress
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 10;
+                    progressBar.style.width = progress + '%';
+                    
+                    if (progress === 30) statusText.textContent = 'Detecting anatomy...';
+                    if (progress === 60) statusText.textContent = 'Analyzing caries...';
+                    if (progress === 90) statusText.textContent = 'Finalizing report...';
+                    
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        showResults();
+                    }
+                }, 200);
+            };
+            reader.readAsDataURL(file);
         });
+
+        function showResults() {
+            previewSection.classList.add('hidden');
+            resultSection.classList.remove('hidden');
+        }
+
+        function reset() {
+            fileInput.value = '';
+            uploadSection.classList.remove('hidden');
+            previewSection.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            progressBar.style.width = '0%';
+            statusText.textContent = 'Processing...';
+        }
     </script>
 </body>
 </html>
