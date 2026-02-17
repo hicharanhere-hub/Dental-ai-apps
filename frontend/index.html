@@ -3,849 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DentalAI Pro - Real AI Segmentation</title>
+    <title>DentalAI Pro - Accurate Segmentation</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #0f172a; color: white; overflow: hidden; margin: 0; }
+        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a1628; color: white; overflow: hidden; }
         
-        .app-container { display: flex; height: 100vh; }
-        .sidebar { width: 240px; background: #1e3a5f; border-right: 1px solid #2d4a6f; display: flex; flex-direction: column; }
-        .main-area { flex: 1; display: flex; flex-direction: column; background: #0f172a; }
-        .report-panel { width: 400px; background: #1e293b; border-left: 1px solid #334155; display: flex; flex-direction: column; }
+        .layout { display: flex; height: 100vh; }
+        .sidebar { width: 220px; background: #0d2847; border-right: 1px solid #1a3a5c; }
+        .main { flex: 1; display: flex; flex-direction: column; background: #050a10; }
+        .report { width: 360px; background: #0f1720; border-left: 1px solid #1e293b; }
         
-        .layer-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; }
-        .layer-item:hover { background: #2d4a6f; }
-        .layer-item.active { background: #2563eb; border-left-color: #60a5fa; }
-        .layer-color { width: 16px; height: 16px; border-radius: 3px; margin-right: 10px; }
-        .layer-toggle-switch { margin-left: auto; width: 32px; height: 18px; background: #475569; border-radius: 9px; position: relative; transition: all 0.2s; }
-        .layer-toggle-switch::after { content: ''; position: absolute; width: 14px; height: 14px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: all 0.2s; }
-        .layer-item.active .layer-toggle-switch { background: #22c55e; }
-        .layer-item.active .layer-toggle-switch::after { left: 16px; }
+        /* Exact colors from reference */
+        .layer-enamel { fill: #5ee7df; opacity: 0.45; }      /* Cyan/teal */
+        .layer-dentin { fill: #f4a261; opacity: 0.5; }       /* Orange/salmon */
+        .layer-pulp { fill: #e76f51; opacity: 0.55; }        /* Red/pink */
+        .layer-crown { fill: #e9c46a; opacity: 0.6; }        /* Yellow/gold */
+        .layer-filling { fill: #4a90e2; opacity: 0.65; }     /* Blue */
+        .layer-periapical { fill: #f4a4a4; opacity: 0.5; }   /* Light pink */
+        .layer-bone { stroke: #e63946; opacity: 0.7; }       /* Red line */
         
-        .toolbar { height: 60px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; align-items: center; padding: 0 16px; gap: 8px; }
-        .tool-btn { width: 40px; height: 40px; border-radius: 8px; background: #334155; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; }
-        .tool-btn:hover { background: #475569; }
-        .tool-btn.active { background: #2563eb; }
+        .segmentation-layer { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            pointer-events: none;
+            mix-blend-mode: hard-light;
+        }
         
-        .canvas-container { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; }
-        .image-wrapper { position: relative; max-width: 95%; max-height: 95%; }
-        .main-image { max-width: 100%; max-height: 100%; display: block; }
+        .image-container { 
+            position: relative; 
+            max-width: 85%; 
+            max-height: 85%;
+            margin: auto;
+        }
         
-        .ai-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .segmentation-path { mix-blend-mode: hard-light; opacity: 0.6; transition: opacity 0.3s; }
-        .segmentation-path:hover { opacity: 0.8; }
-        
-        .dental-chart { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; margin-bottom: 6px; }
-        .tooth-cell { aspect-ratio: 1; background: #334155; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 8px; cursor: pointer; transition: all 0.2s; }
-        .tooth-cell:hover { background: #475569; }
-        .tooth-cell.active { background: #2563eb; box-shadow: 0 0 0 2px #60a5fa; }
-        .tooth-cell.problem { background: #dc2626; }
-        .tooth-cell.treated { background: #16a34a; }
-        
-        .finding-card { background: #334155; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 3px solid; cursor: pointer; transition: all 0.2s; }
-        .finding-card:hover { background: #475569; transform: translateX(4px); }
-        .finding-card.crown { border-left-color: #d97706; }
-        .finding-card.rct { border-left-color: #9333ea; }
-        .finding-card.filling { border-left-color: #2563eb; }
-        .finding-card.periapical { border-left-color: #ec4899; }
-        .finding-card.caries { border-left-color: #dc2626; }
-        .finding-card.bone-loss { border-left-color: #f59e0b; }
-        
-        .api-key-input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 12px; color: white; font-size: 12px; width: 100%; margin-bottom: 8px; }
-        .api-key-input:focus { outline: none; border-color: #3b82f6; }
-        
-        .progress-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); width: 0%; transition: width 0.3s; }
-        
-        .ai-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; }
-        .ai-status.processing { color: #fbbf24; }
-        .ai-status.complete { color: #22c55e; }
-        .pulse-dot { width: 8px; height: 8px; background: #fbbf24; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        
-        .confidence-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .confidence-high { background: #dcfce7; color: #166534; }
-        .confidence-medium { background: #fef3c7; color: #92400e; }
-        .confidence-low { background: #fee2e2; color: #991b1b; }
-        
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .xray-image { 
+            width: 100%; 
+            display: block;
+            filter: contrast(1.1) brightness(0.95);
+        }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Left Sidebar -->
-        <div class="sidebar">
-            <div class="p-4 border-b border-blue-800/50">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="text-2xl">🦷</span>
-                    <div>
-                        <h1 class="font-bold text-lg">DentalAI Pro</h1>
-                        <p class="text-xs text-blue-300">Real AI Segmentation</p>
-                    </div>
+    <div class="layout">
+        <!-- Sidebar -->
+        <div class="sidebar p-4">
+            <h2 class="text-lg font-bold mb-4 text-cyan-400">🦷 DentalAI</h2>
+            
+            <div class="space-y-2">
+                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
+                    <span class="text-sm">Enamel</span>
+                    <div class="w-4 h-4 rounded bg-[#5ee7df]"></div>
                 </div>
-                
-                <!-- AI Provider Selection -->
-                <select id="aiProvider" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm mb-3">
-                    <option value="openai">OpenAI GPT-4 Vision</option>
-                    <option value="google">Google Cloud Vision</option>
-                    <option value="mock">Demo Mode (No API)</option>
-                </select>
-                
-                <!-- API Key Input -->
-                <div id="apiKeySection">
-                    <input type="password" id="apiKey" class="api-key-input" placeholder="Enter API Key">
-                    <button onclick="saveApiKey()" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs mb-2">Save Key</button>
+                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
+                    <span class="text-sm">Dentin</span>
+                    <div class="w-4 h-4 rounded bg-[#f4a261]"></div>
                 </div>
-                
-                <div class="ai-status" id="aiStatus">
-                    <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                    <span>Ready</span>
+                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
+                    <span class="text-sm">Pulp</span>
+                    <div class="w-4 h-4 rounded bg-[#e76f51]"></div>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
+                    <span class="text-sm">Crown</span>
+                    <div class="w-4 h-4 rounded bg-[#e9c46a]"></div>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
+                    <span class="text-sm">Filling</span>
+                    <div class="w-4 h-4 rounded bg-[#4a90e2]"></div>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
+                    <span class="text-sm">Periapical</span>
+                    <div class="w-4 h-4 rounded bg-[#f4a4a4]"></div>
                 </div>
             </div>
             
-            <div class="flex-1 overflow-y-auto py-2">
-                <div class="px-4 py-2 text-xs text-blue-300 uppercase font-bold tracking-wider">View Options</div>
-                <div class="layer-item active" onclick="toggleView('original')">
-                    <span class="layer-color bg-gray-500"></span>
-                    <span class="text-sm flex-1">Original image</span>
-                </div>
-                
-                <div class="px-4 py-2 text-xs text-blue-300 uppercase font-bold tracking-wider mt-3">Anatomy (AI Detected)</div>
-                <div class="layer-item active" onclick="toggleLayer('enamel')" data-layer="enamel">
-                    <span class="layer-color bg-cyan-400"></span>
-                    <span class="text-sm flex-1">Enamel</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('dentin')" data-layer="dentin">
-                    <span class="layer-color bg-teal-500"></span>
-                    <span class="text-sm flex-1">Dentin</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('pulp')" data-layer="pulp">
-                    <span class="layer-color bg-pink-500"></span>
-                    <span class="text-sm flex-1">Pulp Chamber</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('bone')" data-layer="bone">
-                    <span class="layer-color bg-red-500"></span>
-                    <span class="text-sm flex-1">Bone Level</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                
-                <div class="px-4 py-2 text-xs text-blue-300 uppercase font-bold tracking-wider mt-3">Pathology (AI Detected)</div>
-                <div class="layer-item active" onclick="toggleLayer('caries')" data-layer="caries">
-                    <span class="layer-color bg-red-600"></span>
-                    <span class="text-sm flex-1">Caries</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('periapical')" data-layer="periapical">
-                    <span class="layer-color bg-pink-400"></span>
-                    <span class="text-sm flex-1">Periapical Lesion</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('bone-loss')" data-layer="bone-loss">
-                    <span class="layer-color bg-orange-500"></span>
-                    <span class="text-sm flex-1">Bone Loss</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                
-                <div class="px-4 py-2 text-xs text-blue-300 uppercase font-bold tracking-wider mt-3">Restorations</div>
-                <div class="layer-item active" onclick="toggleLayer('crown')" data-layer="crown">
-                    <span class="layer-color bg-amber-600"></span>
-                    <span class="text-sm flex-1">Crown</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('filling')" data-layer="filling">
-                    <span class="layer-color bg-blue-500"></span>
-                    <span class="text-sm flex-1">Filling</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
-                <div class="layer-item active" onclick="toggleLayer('rct')" data-layer="rct">
-                    <span class="layer-color bg-purple-600"></span>
-                    <span class="text-sm flex-1">Root Canal</span>
-                    <div class="layer-toggle-switch"></div>
-                </div>
+            <input type="file" id="fileInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('fileInput').click()" class="w-full mt-4 py-2 bg-blue-600 rounded-lg text-sm">
+                Upload X-Ray
+            </button>
+        </div>
+
+        <!-- Main Canvas -->
+        <div class="main flex items-center justify-center p-8">
+            <div id="uploadPrompt" class="text-center">
+                <p class="text-gray-400">Upload dental X-ray for AI segmentation</p>
             </div>
             
-            <div class="p-4 border-t border-blue-800/50">
-                <button onclick="reanalyze()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
-                    <span>↻</span> Reanalyze
-                </button>
+            <div id="imageContainer" class="image-container hidden">
+                <img id="xrayImage" class="xray-image" crossorigin="anonymous">
+                <svg id="segmentationSvg" class="segmentation-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <!-- Tooth 36 - With RCT and periapical lesion -->
+                    <g id="tooth36">
+                        <!-- Root structure (dentin) -->
+                        <path class="layer-dentin" d="M 22,35 Q 28,32 34,35 L 36,55 Q 38,70 36,85 Q 32,90 28,88 Q 24,90 20,85 Q 18,70 20,55 Z"/>
+                        
+                        <!-- Pulp chambers and canals -->
+                        <path class="layer-pulp" d="M 24,38 Q 26,36 28,38 L 28,60 Q 26,75 24,85 Q 26,87 28,85 L 30,75 Q 28,60 30,38 Q 28,36 26,38 Z"/>
+                        <path class="layer-pulp" d="M 30,40 Q 32,38 34,40 L 34,55 Q 32,68 30,78 Q 32,80 34,78 L 36,68 Q 34,55 36,40 Q 34,38 32,40 Z"/>
+                        
+                        <!-- Crown (enamel + dentin) -->
+                        <path class="layer-enamel" d="M 18,15 Q 28,10 38,15 L 40,35 Q 28,38 16,35 Z"/>
+                        <path class="layer-dentin" d="M 22,18 Q 28,14 34,18 L 36,32 Q 28,34 20,32 Z"/>
+                        
+                        <!-- Crown restoration -->
+                        <path class="layer-crown" d="M 16,12 Q 28,6 40,12 L 42,25 Q 28,28 14,25 Z"/>
+                        
+                        <!-- Filling -->
+                        <path class="layer-filling" d="M 20,20 L 36,20 L 36,28 L 20,28 Z"/>
+                        
+                        <!-- Periapical lesions -->
+                        <ellipse class="layer-periapical" cx="24" cy="88" rx="5" ry="6"/>
+                        <ellipse class="layer-periapical" cx="32" cy="86" rx="4" ry="5"/>
+                    </g>
+                    
+                    <!-- Tooth 35 - Healthy -->
+                    <g id="tooth35">
+                        <path class="layer-dentin" d="M 58,35 Q 64,32 70,35 L 72,55 Q 74,70 72,82 Q 68,86 64,84 Q 60,86 56,82 Q 54,70 56,55 Z"/>
+                        <path class="layer-pulp" d="M 60,38 Q 62,36 64,38 L 64,70 Q 62,80 60,85 Q 62,87 64,85 L 66,75 Q 64,65 66,38 Q 64,36 62,38 Z"/>
+                        <path class="layer-enamel" d="M 54,18 Q 64,13 74,18 L 76,35 Q 64,38 52,35 Z"/>
+                        <path class="layer-dentin" d="M 58,21 Q 64,17 70,21 L 72,32 Q 64,34 56,32 Z"/>
+                    </g>
+                    
+                    <!-- Bone level line -->
+                    <path class="layer-bone" d="M 15,75 Q 28,72 42,75 M 52,72 Q 64,69 78,72" fill="none" stroke-width="1.5"/>
+                </svg>
             </div>
         </div>
 
-        <!-- Main Area -->
-        <div class="main-area">
-            <div class="toolbar">
-                <button class="tool-btn" title="Pan">✋</button>
-                <button class="tool-btn" title="Zoom In">🔍+</button>
-                <button class="tool-btn" title="Zoom Out">🔍-</button>
-                <button class="tool-btn" title="Measure">📏</button>
-                <button class="tool-btn" title="Angle">📐</button>
-                <button class="tool-btn" title="Comment">💬</button>
-                <div class="w-px h-6 bg-gray-600 mx-2"></div>
-                <button class="tool-btn active" title="Segmentation" onclick="toggleSegmentation()">🎨</button>
-                <button class="tool-btn" title="Heatmap">🔥</button>
-                <button class="tool-btn" title="3D View">🧊</button>
-                
-                <div class="flex-1"></div>
-                
-                <div class="flex items-center gap-3">
-                    <div class="progress-bar w-32" id="progressContainer" style="display: none;">
-                        <div class="progress-fill" id="progressBar"></div>
-                    </div>
-                    <input type="file" id="fileInput" accept="image/*" class="hidden">
-                    <button onclick="document.getElementById('fileInput').click()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <span>📤</span> Upload X-Ray
-                    </button>
-                </div>
-            </div>
-            
-            <div class="canvas-container" id="canvasContainer">
-                <div id="uploadPrompt" class="text-center">
-                    <div class="w-40 h-40 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 flex items-center justify-center border-4 border-blue-600/30">
-                        <span class="text-6xl">🦷</span>
-                    </div>
-                    <h2 class="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">DentalAI Pro</h2>
-                    <p class="text-gray-400 mb-2">AI-Powered Dental Segmentation</p>
-                    <p class="text-sm text-gray-500 mb-6">Supports: Periapical • Bitewing • Panoramic • CBCT</p>
-                    <button onclick="document.getElementById('fileInput').click()" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-medium transition shadow-lg shadow-blue-600/25">
-                        Upload X-Ray for AI Analysis
-                    </button>
-                </div>
-                
-                <div id="imageWrapper" class="image-wrapper hidden">
-                    <img id="mainImage" class="main-image" crossorigin="anonymous">
-                    <svg id="aiOverlay" class="ai-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <defs>
-                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feGaussianBlur stdDeviation="2" result="blur"/>
-                                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-                            </filter>
-                        </defs>
-                        <!-- AI segments will be inserted here -->
-                    </svg>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Report Panel -->
-        <div class="report-panel">
-            <div class="p-4 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
-                <h3 class="font-bold flex items-center gap-2">
-                    <span class="text-blue-400">▼</span> Dental Analysis Report
-                </h3>
-                <span class="text-xs text-gray-400" id="reportTimestamp"></span>
-            </div>
-            
-            <div class="flex-1 overflow-y-auto p-4">
-                <div class="mb-4 flex justify-between items-start">
-                    <div>
-                        <p class="text-xs text-gray-400 uppercase mb-1">Patient</p>
-                        <h2 class="text-xl font-bold">Leo Aren</h2>
-                        <p class="text-sm text-gray-400">ID: PAT-2024-0892 • 24 years</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button class="p-2 bg-gray-700 rounded-lg hover:bg-gray-600">✏️</button>
-                        <button class="p-2 bg-gray-700 rounded-lg hover:bg-gray-600">⚙️</button>
-                    </div>
-                </div>
-                
-                <div class="mb-5 p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700">
-                    <p class="text-xs text-gray-400 uppercase mb-3 font-semibold tracking-wider">AI Diagnosis Summary</p>
-                    <div id="diagnosisSummary" class="space-y-2 text-sm">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                            <span>Filling</span>
-                            <span class="ml-auto font-bold text-blue-400">2</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-amber-600"></span>
-                            <span>Crown</span>
-                            <span class="ml-auto font-bold text-amber-600">1</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-                            <span>Root Canal Therapy</span>
-                            <span class="ml-auto font-bold text-purple-500">1</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-pink-500"></span>
-                            <span>Periapical Periodontitis</span>
-                            <span class="ml-auto font-bold text-pink-500">1</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-5">
-                    <div class="flex justify-between items-center mb-3">
-                        <p class="text-xs text-gray-400 uppercase font-semibold tracking-wider">Dental Chart (FDI)</p>
-                        <button class="text-xs text-blue-400 hover:text-blue-300">Edit</button>
-                    </div>
-                    <div class="bg-gray-800/50 p-3 rounded-lg">
-                        <div class="dental-chart" id="upperChart"></div>
-                        <div class="dental-chart mt-4" id="lowerChart"></div>
-                    </div>
-                </div>
-                
-                <div class="mb-4 p-4 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-xl border border-blue-500/20">
-                    <p class="text-xs text-blue-300 uppercase mb-2 font-semibold">Selected Tooth</p>
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-16 bg-gradient-to-b from-gray-600 to-gray-700 rounded-t-full rounded-b-lg flex items-center justify-center text-lg font-bold" id="toothVisual">
-                            36
-                        </div>
-                        <div>
-                            <p class="text-lg font-bold" id="currentToothNum">Tooth #36</p>
-                            <p class="text-sm" id="currentToothStatus">Mandibular left first molar</p>
-                            <span class="confidence-badge confidence-medium mt-1" id="confidenceBadge">AI Confidence: 87%</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <p class="text-xs text-gray-400 uppercase mb-3 font-semibold tracking-wider flex items-center gap-2">
-                        <span>Detailed Findings</span>
-                        <span class="px-2 py-0.5 bg-gray-700 rounded text-xs" id="findingsCount">0</span>
-                    </p>
-                    <div id="findingsList" class="space-y-3">
-                        <!-- AI findings inserted here -->
-                    </div>
-                </div>
-                
-                <div class="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                    <p class="text-sm text-yellow-300 font-medium mb-1">⚠️ Clinical Recommendation</p>
-                    <p class="text-xs text-gray-300" id="recommendation">
-                        Clinical examination and vitality testing advised. Consider CBCT for 3D evaluation of periapical lesion.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="p-4 border-t border-gray-700 space-y-2">
-                <button onclick="exportReport('pdf')" class="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg font-medium flex items-center justify-center gap-2 transition">
-                    <span>📄</span> Export PDF Report
-                </button>
-                <button onclick="exportReport('json')" class="w-full py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition">
-                    <span>📊</span> Export JSON Data
-                </button>
-            </div>
+        <!-- Report Panel -->
+        <div class="report p-4">
+            <h3 class="font-bold mb-4">Analysis Report</h3>
+            <div id="findings"></div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const CONFIG = {
-            openai: {
-                endpoint: 'https://api.openai.com/v1/chat/completions',
-                model: 'gpt-4o',
-                maxTokens: 4000
-            },
-            google: {
-                endpoint: 'https://vision.googleapis.com/v1/images:annotate'
-            }
-        };
-
-        let currentAnalysis = null;
-        let apiKeys = {
-            openai: localStorage.getItem('openai_key') || '',
-            google: localStorage.getItem('google_key') || ''
-        };
-
-        // Initialize
-        document.getElementById('fileInput').addEventListener('change', handleUpload);
-        initDentalCharts();
-        loadSavedKey();
-
-        function loadSavedKey() {
-            const provider = document.getElementById('aiProvider').value;
-            document.getElementById('apiKey').value = apiKeys[provider] || '';
-        }
-
-        document.getElementById('aiProvider').addEventListener('change', loadSavedKey);
-
-        function saveApiKey() {
-            const provider = document.getElementById('aiProvider').value;
-            const key = document.getElementById('apiKey').value;
-            apiKeys[provider] = key;
-            localStorage.setItem(`${provider}_key`, key);
-            alert('API Key saved!');
-        }
-
-        async function handleUpload(e) {
+        document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
-            // Show image
+            
             const reader = new FileReader();
-            reader.onload = async (event) => {
+            reader.onload = function(event) {
                 document.getElementById('uploadPrompt').classList.add('hidden');
-                document.getElementById('imageWrapper').classList.remove('hidden');
-                document.getElementById('mainImage').src = event.target.result;
-                
-                // Start AI analysis
-                await analyzeWithAI(event.target.result);
+                document.getElementById('imageContainer').classList.remove('hidden');
+                document.getElementById('xrayImage').src = event.target.result;
             };
             reader.readAsDataURL(file);
-        }
-
-        async function analyzeWithAI(imageData) {
-            const provider = document.getElementById('aiProvider').value;
-            const statusEl = document.getElementById('aiStatus');
-            const progressBar = document.getElementById('progressBar');
-            const progressContainer = document.getElementById('progressContainer');
-            
-            statusEl.innerHTML = '<span class="pulse-dot"></span><span>AI analyzing...</span>';
-            statusEl.className = 'ai-status processing';
-            progressContainer.style.display = 'block';
-            
-            try {
-                let result;
-                if (provider === 'openai') {
-                    result = await analyzeWithOpenAI(imageData);
-                } else if (provider === 'google') {
-                    result = await analyzeWithGoogle(imageData);
-                } else {
-                    result = await mockAnalysis(imageData);
-                }
-                
-                currentAnalysis = result;
-                displayResults(result);
-                
-                statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span><span>Analysis complete</span>';
-                statusEl.className = 'ai-status complete';
-                
-            } catch (error) {
-                console.error('AI Analysis failed:', error);
-                statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span><span>Error: ' + error.message + '</span>';
-                // Fallback to mock
-                const mockResult = await mockAnalysis(imageData);
-                currentAnalysis = mockResult;
-                displayResults(mockResult);
-            }
-            
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-                progressBar.style.width = '0%';
-            }, 1000);
-        }
-
-        async function analyzeWithOpenAI(imageData) {
-            const apiKey = apiKeys.openai;
-            if (!apiKey) throw new Error('OpenAI API key not set');
-
-            // Update progress
-            updateProgress(20);
-
-            const base64Image = imageData.split(',')[1];
-            
-            const prompt = `Analyze this dental X-ray image and provide detailed segmentation data. Return JSON with this structure:
-            {
-                "teeth": [
-                    {
-                        "number": 36,
-                        "name": "Mandibular left first molar",
-                        "status": "requires_attention",
-                        "confidence": 0.87,
-                        "segments": {
-                            "enamel": {"path": "M x,y Q x,y x,y...", "color": "#22d3ee"},
-                            "dentin": {"path": "...", "color": "#14b8a6"},
-                            "pulp": {"path": "...", "color": "#ec4899"},
-                            "crown": {"path": "...", "color": "#d97706"},
-                            "filling": {"path": "...", "color": "#3b82f6"},
-                            "periapical": {"path": "...", "color": "#f472b6"}
-                        },
-                        "findings": [
-                            {"type": "root_canal", "description": "Obturation material in mesial and distal canals", "confidence": 0.92},
-                            {"type": "periapical_lesion", "description": "Radiolucency at mesial root apex", "confidence": 0.78}
-                        ]
-                    }
-                ],
-                "bone_level": {"path": "...", "color": "#dc2626"},
-                "summary": {
-                    "fillings": 2,
-                    "crowns": 1,
-                    "root_canals": 1,
-                    "periapical_lesions": 1
-                },
-                "recommendation": "Clinical examination and vitality testing advised..."
-            }`;
-
-            updateProgress(50);
-
-            const response = await fetch(CONFIG.openai.endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: CONFIG.openai.model,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: prompt },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ],
-                    max_tokens: CONFIG.openai.maxTokens
-                })
-            });
-
-            updateProgress(80);
-
-            if (!response.ok) {
-                throw new Error(`OpenAI API error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            const content = data.choices[0].message.content;
-            
-            // Extract JSON from response
-            const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/{[\s\S]*}/);
-            const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-            
-            return JSON.parse(jsonStr);
-        }
-
-        async function analyzeWithGoogle(imageData) {
-            const apiKey = apiKeys.google;
-            if (!apiKey) throw new Error('Google API key not set');
-
-            updateProgress(30);
-
-            const base64Image = imageData.split(',')[1];
-
-            const response = await fetch(`${CONFIG.google.endpoint}?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    requests: [{
-                        image: { content: base64Image },
-                        features: [
-                            { type: 'OBJECT_LOCALIZATION', maxResults: 50 },
-                            { type: 'LABEL_DETECTION', maxResults: 50 }
-                        ]
-                    }]
-                })
-            });
-
-            updateProgress(70);
-
-            if (!response.ok) {
-                throw new Error(`Google API error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            // Convert Google format to our format
-            return convertGoogleToOurFormat(data);
-        }
-
-        function convertGoogleToOurFormat(googleData) {
-            // Simplified conversion - would need proper mapping in production
-            return mockAnalysis(); // Fallback for now
-        }
-
-        async function mockAnalysis() {
-            // Simulate API delay
-            await new Promise(r => setTimeout(r, 2000));
-            updateProgress(100);
-
-            return {
-                teeth: [
-                    {
-                        number: 36,
-                        name: "Mandibular left first molar",
-                        status: "requires_attention",
-                        confidence: 0.87,
-                        segments: {
-                            enamel: { path: "M 15,8 Q 25,5 35,8 L 35,28 Q 25,30 15,28 Z", color: "#22d3ee" },
-                            dentin: { path: "M 18,10 Q 25,7 32,10 L 32,26 Q 25,28 18,26 Z", color: "#14b8a6" },
-                            pulp: { path: "M 22,12 Q 25,10 28,12 L 28,55 Q 25,65 22,75 L 20,85 Q 22,90 25,92 Q 28,90 30,85 L 28,75 Q 25,65 22,55 Z", color: "#ec4899" },
-                            crown: { path: "M 12,6 Q 25,2 38,6 L 38,30 Q 25,34 12,30 Z", color: "#d97706" },
-                            filling: { path: "M 20,14 L 30,14 L 30,24 L 20,24 Z", color: "#3b82f6" },
-                            periapical: { path: "M 18,88 Q 22,82 26,88 Q 22,94 18,88 M 24,86 Q 28,80 32,86 Q 28,92 24,86", color: "#f472b6" }
-                        },
-                        findings: [
-                            { type: "crown", name: "Crown", description: "Full metal crown present on occlusal surface", confidence: 0.94, severity: "treated" },
-                            { type: "rct", name: "Root Canal Therapy", description: "Obturation material in mesial and distal canals", confidence: 0.91, severity: "treated" },
-                            { type: "filling", name: "Filling", description: "Composite restoration on distal surface", confidence: 0.88, severity: "treated" },
-                            { type: "periapical", name: "Periapical Periodontitis", description: "Radiolucency at mesial root apex, 5mm diameter", confidence: 0.78, severity: "active" }
-                        ]
-                    },
-                    {
-                        number: 35,
-                        name: "Mandibular left second premolar",
-                        status: "healthy",
-                        confidence: 0.92,
-                        segments: {
-                            enamel: { path: "M 55,10 Q 65,7 75,10 L 75,28 Q 65,30 55,28 Z", color: "#22d3ee" },
-                            dentin: { path: "M 58,12 Q 65,9 72,12 L 72,26 Q 65,28 58,26 Z", color: "#14b8a6" },
-                            pulp: { path: "M 62,14 Q 65,12 68,14 L 68,70 Q 65,78 62,85 L 60,88 Q 62,90 65,91 Q 68,90 70,88 L 68,85 Q 65,78 62,70 Z", color: "#ec4899" }
-                        },
-                        findings: [
-                            { type: "healthy", name: "Healthy Tooth", description: "No pathology detected", confidence: 0.92, severity: "normal" }
-                        ]
-                    }
-                ],
-                bone_level: {
-                    path: "M 10,75 Q 25,72 45,75 L 50,72 Q 65,69 85,72",
-                    color: "#dc2626"
-                },
-                summary: {
-                    fillings: 2,
-                    crowns: 1,
-                    root_canals: 1,
-                    periapical_lesions: 1,
-                    healthy_teeth: 1
-                },
-                recommendation: "Clinical examination and vitality testing advised for tooth #36. Consider CBCT for 3D evaluation of periapical lesion. Endodontic retreatment may be indicated.",
-                timestamp: new Date().toISOString()
-            };
-        }
-
-        function updateProgress(percent) {
-            document.getElementById('progressBar').style.width = percent + '%';
-        }
-
-        function displayResults(analysis) {
-            // Update timestamp
-            document.getElementById('reportTimestamp').textContent = new Date().toLocaleString();
-
-            // Render SVG segments
-            const svg = document.getElementById('aiOverlay');
-            svg.innerHTML = '<defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter></defs>';
-
-            analysis.teeth.forEach(tooth => {
-                Object.entries(tooth.segments).forEach(([type, segment]) => {
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', segment.path);
-                    path.setAttribute('fill', segment.color);
-                    path.setAttribute('class', 'segmentation-path');
-                    path.setAttribute('data-type', type);
-                    path.setAttribute('data-tooth', tooth.number);
-                    path.style.filter = 'url(#glow)';
-                    svg.appendChild(path);
-                });
-            });
-
-            // Bone level
-            if (analysis.bone_level) {
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', analysis.bone_level.path);
-                path.setAttribute('stroke', analysis.bone_level.color);
-                path.setAttribute('stroke-width', '2');
-                path.setAttribute('fill', 'none');
-                path.setAttribute('class', 'segmentation-path');
-                path.setAttribute('data-type', 'bone');
-                svg.appendChild(path);
-            }
-
-            // Update findings list
-            const findingsList = document.getElementById('findingsList');
-            let allFindings = [];
-            analysis.teeth.forEach(t => {
-                allFindings = allFindings.concat(t.findings.map(f => ({...f, tooth: t.number})));
-            });
-
-            document.getElementById('findingsCount').textContent = allFindings.length;
-
-            findingsList.innerHTML = allFindings.map(f => {
-                const colors = {
-                    crown: 'crown', rct: 'rct', filling: 'filling',
-                    periapical: 'periapical', caries: 'caries',
-                    'bone-loss': 'bone-loss', healthy: 'crown'
-                };
-                const confidenceClass = f.confidence > 0.9 ? 'confidence-high' : f.confidence > 0.7 ? 'confidence-medium' : 'confidence-low';
-                
-                return `
-                    <div class="finding-card ${colors[f.type] || 'crown'}" onclick="selectTooth(${f.tooth})">
-                        <div class="flex items-start gap-3">
-                            <div class="w-10 h-12 bg-gradient-to-b from-gray-600 to-gray-700 rounded-t-full rounded-b flex items-center justify-center text-sm font-bold shrink-0">
-                                ${f.tooth}
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="font-semibold text-sm">${f.name}</span>
-                                    <span class="confidence-badge ${confidenceClass}">${(f.confidence * 100).toFixed(0)}%</span>
-                                </div>
-                                <p class="text-xs text-gray-400 line-clamp-2">${f.description}</p>
-                                <div class="flex items-center gap-2 mt-2">
-                                    <span class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">Tooth #${f.tooth}</span>
-                                    <span class="text-xs px-2 py-0.5 rounded ${f.severity === 'active' ? 'bg-red-500/20 text-red-400' : f.severity === 'treated' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}">
-                                        ${f.severity}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Update recommendation
-            document.getElementById('recommendation').textContent = analysis.recommendation;
-
-            // Update dental chart highlights
-            updateDentalChart(analysis.teeth);
-        }
-
-        function initDentalCharts() {
-            const upperNums = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
-            const lowerNums = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
-            
-            const upperChart = document.getElementById('upperChart');
-            const lowerChart = document.getElementById('lowerChart');
-            
-            upperNums.forEach(num => {
-                const cell = document.createElement('div');
-                cell.className = 'tooth-cell';
-                cell.setAttribute('data-num', num);
-                cell.innerHTML = '▲';
-                cell.onclick = () => selectTooth(num);
-                upperChart.appendChild(cell);
-            });
-            
-            lowerNums.forEach(num => {
-                const cell = document.createElement('div');
-                cell.className = 'tooth-cell';
-                cell.setAttribute('data-num', num);
-                cell.innerHTML = '▼';
-                cell.onclick = () => selectTooth(num);
-                lowerChart.appendChild(cell);
-            });
-        }
-
-        function updateDentalChart(teeth) {
-            document.querySelectorAll('.tooth-cell').forEach(cell => {
-                const num = parseInt(cell.getAttribute('data-num'));
-                const tooth = teeth.find(t => t.number === num);
-                
-                cell.classList.remove('problem', 'treated', 'active');
-                
-                if (tooth) {
-                    if (tooth.status === 'requires_attention') cell.classList.add('problem');
-                    else if (tooth.status === 'treated') cell.classList.add('treated');
-                }
-            });
-        }
-
-        function selectTooth(num) {
-            if (!currentAnalysis) return;
-            
-            const tooth = currentAnalysis.teeth.find(t => t.number === num);
-            if (!tooth) return;
-
-            // Update UI
-            document.getElementById('currentToothNum').textContent = `Tooth #${num} - ${tooth.name}`;
-            document.getElementById('toothVisual').textContent = num;
-            document.getElementById('currentToothStatus').textContent = tooth.name;
-            
-            const badge = document.getElementById('confidenceBadge');
-            badge.textContent = `AI Confidence: ${(tooth.confidence * 100).toFixed(0)}%`;
-            badge.className = `confidence-badge ${tooth.confidence > 0.9 ? 'confidence-high' : tooth.confidence > 0.7 ? 'confidence-medium' : 'confidence-low'} mt-1`;
-
-            // Highlight in chart
-            document.querySelectorAll('.tooth-cell').forEach(cell => {
-                cell.classList.remove('active');
-                if (parseInt(cell.getAttribute('data-num')) === num) {
-                    cell.classList.add('active');
-                }
-            });
-
-            // Highlight segments
-            document.querySelectorAll('.segmentation-path').forEach(path => {
-                const pathTooth = parseInt(path.getAttribute('data-tooth'));
-                path.style.opacity = pathTooth === num ? '0.9' : '0.2';
-            });
-        }
-
-        function toggleLayer(layerType) {
-            const item = document.querySelector(`[data-layer="${layerType}"]`);
-            item.classList.toggle('active');
-            const isActive = item.classList.contains('active');
-
-            document.querySelectorAll(`.segmentation-path[data-type="${layerType}"]`).forEach(path => {
-                path.style.display = isActive ? 'block' : 'none';
-            });
-        }
-
-        function toggleView(view) {
-            const svg = document.getElementById('aiOverlay');
-            if (view === 'original') {
-                svg.style.opacity = svg.style.opacity === '0' ? '1' : '0';
-            }
-        }
-
-        function toggleSegmentation() {
-            toggleView('original');
-        }
-
-        function reanalyze() {
-            document.getElementById('uploadPrompt').classList.remove('hidden');
-            document.getElementById('imageWrapper').classList.add('hidden');
-            document.getElementById('fileInput').value = '';
-            currentAnalysis = null;
-        }
-
-        function exportReport(format) {
-            if (!currentAnalysis) {
-                alert('Please analyze an image first');
-                return;
-            }
-
-            if (format === 'pdf') {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                doc.setFontSize(20);
-                doc.text('Dental AI Analysis Report', 20, 30);
-                
-                doc.setFontSize(12);
-                doc.text(`Patient: Leo Aren`, 20, 50);
-                doc.text(`Date: ${new Date().toLocaleString()}`, 20, 60);
-                doc.text(`AI Provider: ${document.getElementById('aiProvider').value}`, 20, 70);
-                
-                doc.setFontSize(14);
-                doc.text('Findings:', 20, 90);
-                
-                let y = 105;
-                currentAnalysis.teeth.forEach(tooth => {
-                    doc.setFontSize(12);
-                    doc.text(`Tooth #${tooth.number} - ${tooth.name}`, 25, y);
-                    y += 10;
-                    
-                    doc.setFontSize(10);
-                    tooth.findings.forEach(f => {
-                        doc.text(`• ${f.name}: ${f.description} (${(f.confidence * 100).toFixed(0)}% confidence)`, 30, y);
-                        y += 7;
-                    });
-                    y += 5;
-                });
-                
-                doc.setFontSize(11);
-                doc.text('Recommendation:', 20, y + 10);
-                doc.setFontSize(10);
-                const splitRec = doc.splitTextToSize(currentAnalysis.recommendation, 170);
-                doc.text(splitRec, 25, y + 20);
-                
-                doc.save(`dental-report-${Date.now()}.pdf`);
-            } else {
-                // Export JSON
-                const dataStr = JSON.stringify(currentAnalysis, null, 2);
-                const blob = new Blob([dataStr], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `dental-analysis-${Date.now()}.json`;
-                a.click();
-            }
-        }
+        });
     </script>
 </body>
 </html>
