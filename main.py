@@ -29,6 +29,19 @@ async def upload_image(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         image_base64 = base64.b64encode(contents).decode('utf-8')
+        from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+app = FastAPI()
+
+# Serve frontend files
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+
+# Optional: API health check
+@app.get("/api/health")
+def health():
+    return {"status": "live", "service": "dental-ai"}
         
         response = openai.chat.completions.create(
             model="gpt-4o",
