@@ -5,15 +5,15 @@ import os
 
 app = FastAPI()
 
-# API endpoint (keep this)
-@app.get("/api")
-def api_info():
-    return {"message": "DentalAI Pro API", "status": "operational"}
-
-# Serve frontend HTML at root
+# Serve frontend at root
 @app.get("/")
-def serve_frontend():
+def home():
     return FileResponse("frontend/index.html")
 
-# Optional: Serve all frontend files (CSS, JS, images)
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+# Serve other frontend files (CSS, JS, images)
+app.mount("/", StaticFiles(directory="frontend"), name="frontend")
+
+# API endpoint
+@app.get("/api")
+def api():
+    return {"message": "DentalAI Pro API", "status": "operational"}
