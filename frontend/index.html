@@ -3,138 +3,491 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DentalAI Pro - Accurate Segmentation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>DentalAI - Eighteeth Style</title>
     <style>
-        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a1628; color: white; overflow: hidden; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #0f172a; color: white; height: 100vh; overflow: hidden; }
         
-        .layout { display: flex; height: 100vh; }
-        .sidebar { width: 220px; background: #0d2847; border-right: 1px solid #1a3a5c; }
-        .main { flex: 1; display: flex; flex-direction: column; background: #050a10; }
-        .report { width: 360px; background: #0f1720; border-left: 1px solid #1e293b; }
+        .app { display: flex; height: 100vh; }
         
-        /* Exact colors from reference */
-        .layer-enamel { fill: #5ee7df; opacity: 0.45; }      /* Cyan/teal */
-        .layer-dentin { fill: #f4a261; opacity: 0.5; }       /* Orange/salmon */
-        .layer-pulp { fill: #e76f51; opacity: 0.55; }        /* Red/pink */
-        .layer-crown { fill: #e9c46a; opacity: 0.6; }        /* Yellow/gold */
-        .layer-filling { fill: #4a90e2; opacity: 0.65; }     /* Blue */
-        .layer-periapical { fill: #f4a4a4; opacity: 0.5; }   /* Light pink */
-        .layer-bone { stroke: #e63946; opacity: 0.7; }       /* Red line */
-        
-        .segmentation-layer { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            pointer-events: none;
-            mix-blend-mode: hard-light;
+        /* LEFT SIDEBAR - Dark blue */
+        .sidebar { 
+            width: 240px; 
+            background: #0c4a6e; 
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-header { 
+            padding: 16px; 
+            border-bottom: 1px solid #075985;
+        }
+        .reanalysis-btn {
+            width: 100%;
+            padding: 10px;
+            background: #0284c7;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         
-        .image-container { 
-            position: relative; 
-            max-width: 85%; 
+        .layer-section { 
+            flex: 1; 
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .section-title {
+            padding: 12px 16px 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #7dd3fc;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .layer-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            margin: 2px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .layer-item:hover { background: #075985; }
+        .layer-item.active { background: #0369a1; }
+        
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            background: #475569;
+            border-radius: 9px;
+            position: relative;
+            margin-left: auto;
+        }
+        .layer-item.active .toggle-switch { background: #22c55e; }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s;
+        }
+        .layer-item.active .toggle-switch::after { left: 16px; }
+        
+        /* EXACT COLORS from image */
+        .dot-pulp { background: #a855f7; }           /* Purple */
+        .dot-enamel { background: #14b8a6; }         /* Teal */
+        .dot-dentin { background: #5eead4; }         /* Light teal */
+        .dot-bone { background: #ef4444; }           /* Red */
+        .dot-crown { background: #f59e0b; }          /* Orange/amber */
+        .dot-rct { background: #9333ea; }            /* Purple */
+        .dot-filling { background: #3b82f6; }        /* Blue */
+        .dot-periapical { background: #ec4899; }     /* Pink */
+        
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 12px;
+        }
+        
+        /* CENTER - Image area */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #020617;
+        }
+        .toolbar {
+            height: 56px;
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 8px;
+        }
+        .tool-btn {
+            width: 40px;
+            height: 40px;
+            background: #1e293b;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .tool-btn:hover { background: #334155; }
+        
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px;
+        }
+        .image-container {
+            position: relative;
+            max-width: 85%;
             max-height: 85%;
-            margin: auto;
+        }
+        #xrayImage {
+            width: 100%;
+            display: block;
+            border-radius: 8px;
+        }
+        #svgOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
         
-        .xray-image { 
-            width: 100%; 
-            display: block;
-            filter: contrast(1.1) brightness(0.95);
+        /* SVG segmentation - Exact colors and opacity */
+        .seg-pulp { fill: #a855f7; opacity: 0.5; mix-blend-mode: hard-light; }
+        .seg-enamel { fill: #14b8a6; opacity: 0.4; mix-blend-mode: hard-light; }
+        .seg-dentin { fill: #5eead4; opacity: 0.35; mix-blend-mode: hard-light; }
+        .seg-crown { fill: #f59e0b; opacity: 0.5; mix-blend-mode: hard-light; }
+        .seg-rct { fill: #9333ea; opacity: 0.6; mix-blend-mode: hard-light; }
+        .seg-filling { fill: #3b82f6; opacity: 0.65; mix-blend-mode: hard-light; }
+        .seg-periapical { fill: #ec4899; opacity: 0.5; mix-blend-mode: hard-light; }
+        .seg-bone { stroke: #ef4444; stroke-width: 2.5; fill: none; opacity: 0.9; }
+        
+        /* RIGHT PANEL - Report */
+        .report {
+            width: 360px;
+            background: #f8fafc;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
         }
+        .report-header {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .report-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .patient-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .patient-info {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+        
+        .diagnosis-box {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .diagnosis-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .diagnosis-item {
+            font-size: 14px;
+            margin: 4px 0;
+            color: #334155;
+        }
+        .diagnosis-count {
+            font-weight: 700;
+            color: #0f172a;
+        }
+        
+        /* Dental chart grid */
+        .chart-container {
+            margin-bottom: 16px;
+        }
+        .chart-row {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 2px;
+            margin-bottom: 4px;
+        }
+        .tooth-box {
+            aspect-ratio: 1;
+            background: #e2e8f0;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .tooth-box.problem { background: #fbbf24; color: #92400e; }
+        .tooth-box.treated { background: #a855f7; color: white; }
+        
+        .chart-labels {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 2px;
+            text-align: center;
+            font-size: 9px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        
+        /* Current tooth section */
+        .current-tooth {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .current-tooth-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+        .current-tooth-status {
+            color: #16a34a;
+            font-size: 14px;
+        }
+        
+        /* Findings list */
+        .findings-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .findings-title::after {
+            content: '▼';
+            font-size: 10px;
+        }
+        
+        .finding-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .tooth-icon {
+            width: 32px;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 4px 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+        .tooth-icon.problem { background: #fbbf24; color: #92400e; }
+        
+        .finding-details h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .finding-list {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .download-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="layout">
-        <!-- Sidebar -->
-        <div class="sidebar p-4">
-            <h2 class="text-lg font-bold mb-4 text-cyan-400">🦷 DentalAI</h2>
+    <div class="app">
+        <!-- LEFT -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button class="reanalysis-btn" onclick="reset()">
+                    ↻ Reanalysis
+                </button>
+            </div>
             
-            <div class="space-y-2">
-                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
-                    <span class="text-sm">Enamel</span>
-                    <div class="w-4 h-4 rounded bg-[#5ee7df]"></div>
+            <div class="layer-section">
+                <div class="section-title">View Options</div>
+                <div class="layer-item active">
+                    <span style="flex: 1;">Original image</span>
                 </div>
-                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
-                    <span class="text-sm">Dentin</span>
-                    <div class="w-4 h-4 rounded bg-[#f4a261]"></div>
+                
+                <div class="section-title">Structures</div>
+                <div class="layer-item active" onclick="toggle('pulp')">
+                    <div class="color-dot dot-pulp"></div>
+                    <span style="flex: 1;">Pulp</span>
+                    <div class="toggle-switch"></div>
                 </div>
-                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
-                    <span class="text-sm">Pulp</span>
-                    <div class="w-4 h-4 rounded bg-[#e76f51]"></div>
+                <div class="layer-item active" onclick="toggle('enamel')">
+                    <div class="color-dot dot-enamel"></div>
+                    <span style="flex: 1;">Enamel</span>
+                    <div class="toggle-switch"></div>
                 </div>
-                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
-                    <span class="text-sm">Crown</span>
-                    <div class="w-4 h-4 rounded bg-[#e9c46a]"></div>
+                <div class="layer-item active" onclick="toggle('dentin')">
+                    <div class="color-dot dot-dentin"></div>
+                    <span style="flex: 1;">Dentin</span>
+                    <div class="toggle-switch"></div>
                 </div>
-                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
-                    <span class="text-sm">Filling</span>
-                    <div class="w-4 h-4 rounded bg-[#4a90e2]"></div>
+                <div class="layer-item active" onclick="toggle('bone')">
+                    <div class="color-dot dot-bone"></div>
+                    <span style="flex: 1;">Bone level</span>
+                    <div class="toggle-switch"></div>
                 </div>
-                <div class="flex items-center justify-between p-2 rounded bg-blue-900/30">
-                    <span class="text-sm">Periapical</span>
-                    <div class="w-4 h-4 rounded bg-[#f4a4a4]"></div>
+                
+                <div class="section-title">Treatments</div>
+                <div class="layer-item active" onclick="toggle('crown')">
+                    <div class="color-dot dot-crown"></div>
+                    <span style="flex: 1;">Crown</span>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="layer-item active" onclick="toggle('rct')">
+                    <div class="color-dot dot-rct"></div>
+                    <span style="flex: 1;">Root canal therapy</span>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="layer-item active" onclick="toggle('filling')">
+                    <div class="color-dot dot-filling"></div>
+                    <span style="flex: 1;">Filling</span>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="layer-item active" onclick="toggle('periapical')">
+                    <div class="color-dot dot-periapical"></div>
+                    <span style="flex: 1;">Periapical periodontitis</span>
+                    <div class="toggle-switch"></div>
                 </div>
             </div>
             
-            <input type="file" id="fileInput" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('fileInput').click()" class="w-full mt-4 py-2 bg-blue-600 rounded-lg text-sm">
-                Upload X-Ray
-            </button>
-        </div>
-
-        <!-- Main Canvas -->
-        <div class="main flex items-center justify-center p-8">
-            <div id="uploadPrompt" class="text-center">
-                <p class="text-gray-400">Upload dental X-ray for AI segmentation</p>
-            </div>
-            
-            <div id="imageContainer" class="image-container hidden">
-                <img id="xrayImage" class="xray-image" crossorigin="anonymous">
-                <svg id="segmentationSvg" class="segmentation-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <!-- Tooth 36 - With RCT and periapical lesion -->
-                    <g id="tooth36">
-                        <!-- Root structure (dentin) -->
-                        <path class="layer-dentin" d="M 22,35 Q 28,32 34,35 L 36,55 Q 38,70 36,85 Q 32,90 28,88 Q 24,90 20,85 Q 18,70 20,55 Z"/>
-                        
-                        <!-- Pulp chambers and canals -->
-                        <path class="layer-pulp" d="M 24,38 Q 26,36 28,38 L 28,60 Q 26,75 24,85 Q 26,87 28,85 L 30,75 Q 28,60 30,38 Q 28,36 26,38 Z"/>
-                        <path class="layer-pulp" d="M 30,40 Q 32,38 34,40 L 34,55 Q 32,68 30,78 Q 32,80 34,78 L 36,68 Q 34,55 36,40 Q 34,38 32,40 Z"/>
-                        
-                        <!-- Crown (enamel + dentin) -->
-                        <path class="layer-enamel" d="M 18,15 Q 28,10 38,15 L 40,35 Q 28,38 16,35 Z"/>
-                        <path class="layer-dentin" d="M 22,18 Q 28,14 34,18 L 36,32 Q 28,34 20,32 Z"/>
-                        
-                        <!-- Crown restoration -->
-                        <path class="layer-crown" d="M 16,12 Q 28,6 40,12 L 42,25 Q 28,28 14,25 Z"/>
-                        
-                        <!-- Filling -->
-                        <path class="layer-filling" d="M 20,20 L 36,20 L 36,28 L 20,28 Z"/>
-                        
-                        <!-- Periapical lesions -->
-                        <ellipse class="layer-periapical" cx="24" cy="88" rx="5" ry="6"/>
-                        <ellipse class="layer-periapical" cx="32" cy="86" rx="4" ry="5"/>
-                    </g>
-                    
-                    <!-- Tooth 35 - Healthy -->
-                    <g id="tooth35">
-                        <path class="layer-dentin" d="M 58,35 Q 64,32 70,35 L 72,55 Q 74,70 72,82 Q 68,86 64,84 Q 60,86 56,82 Q 54,70 56,55 Z"/>
-                        <path class="layer-pulp" d="M 60,38 Q 62,36 64,38 L 64,70 Q 62,80 60,85 Q 62,87 64,85 L 66,75 Q 64,65 66,38 Q 64,36 62,38 Z"/>
-                        <path class="layer-enamel" d="M 54,18 Q 64,13 74,18 L 76,35 Q 64,38 52,35 Z"/>
-                        <path class="layer-dentin" d="M 58,21 Q 64,17 70,21 L 72,32 Q 64,34 56,32 Z"/>
-                    </g>
-                    
-                    <!-- Bone level line -->
-                    <path class="layer-bone" d="M 15,75 Q 28,72 42,75 M 52,72 Q 64,69 78,72" fill="none" stroke-width="1.5"/>
-                </svg>
+            <div style="padding: 16px; border-top: 1px solid #075985;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #7dd3fc; cursor: pointer;">
+                    <input type="checkbox" checked style="accent-color: #0ea5e9;">
+                    Notice to Users
+                </label>
             </div>
         </div>
 
-        <!-- Report Panel -->
-        <div class="report p-4">
-            <h3 class="font-bold mb-4">Analysis Report</h3>
-            <div id="findings"></div>
+        <!-- CENTER -->
+        <div class="main">
+            <div class="toolbar">
+                <button class="tool-btn">✋</button>
+                <button class="tool-btn">📐</button>
+                <button class="tool-btn">📏</button>
+                <button class="tool-btn">📊</button>
+                <button class="tool-btn">🔍</button>
+                <button class="tool-btn">💬</button>
+                <button class="tool-btn">🔄</button>
+                <button class="tool-btn">📷</button>
+                <div style="flex: 1;"></div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                <button class="tool-btn" onclick="document.getElementById('fileInput').click()" style="width: auto; padding: 0 16px; background: #0284c7;">
+                    Upload
+                </button>
+            </div>
+            
+            <div class="canvas-area">
+                <div id="placeholder" style="text-align: center; color: #64748b;">
+                    <div style="font-size: 64px; margin-bottom: 16px;">🦷</div>
+                    <h2 style="color: white; margin-bottom: 8px;">Upload Dental X-Ray</h2>
+                    <p>For AI segmentation analysis</p>
+                </div>
+                
+                <div id="imageContainer" class="image-container hidden">
+                    <img id="xrayImage" src="" alt="X-ray">
+                    <svg id="svgOverlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <!-- TOOTH 36 (Left - with RCT, Crown, Filling, Periapical) -->
+                        <!-- Enamel -->
+                        <path class="layer seg-enamel" data-type="enamel" d="M 18,12 Q 28,8 38,12 L 40,32 Q 28,36 16,32 Z"/>
+                        <!-- Dentin -->
+                        <path class="layer seg-dentin" data-type="dentin" d="M 20,15 Q 28,12 36,15 L 38,55 Q 40,75 36,88 Q 32,92 28,90 Q 24,92 20,88 Q 18,75 18,55 Z"/>
+                        <!-- Pulp chamber (purple) -->
+                        <path class="layer seg-pulp" data-type="pulp" d="M 24,18 Q 26,16 28,18 L 28,35 Q 26,40 24,45 Q 22,40 22,35 Z"/>
+                        <!-- RCT filling (dark purple in canals) -->
+                        <path class="layer seg-rct" data-type="rct" d="M 24,45 Q 26,42 28,45 L 28,80 Q 26,88 24,90 Q 22,88 22,80 Z"/>
+                        <path class="layer seg-rct" data-type="rct" d="M 30,48 Q 32,45 34,48 L 34,78 Q 32,85 30,87 Q 28,85 28,78 Z"/>
+                        <!-- Crown (orange) -->
+                        <path class="layer seg-crown" data-type="crown" d="M 16,9 Q 28,4 40,9 L 42,28 Q 28,32 14,28 Z"/>
+                        <!-- Filling (blue) -->
+                        <rect class="layer seg-filling" data-type="filling" x="22" y="14" width="14" height="10" rx="1"/>
+                        <!-- Periapical (pink) -->
+                        <ellipse class="layer seg-periapical" data-type="periapical" cx="24" cy="92" rx="6" ry="7"/>
+                        <ellipse class="layer seg-periapical" data-type="periapical" cx="32" cy="90" rx="5" ry="6"/>
+                        
+                        <!-- TOOTH 35 (Right - healthy) -->
+                        <!-- Enamel -->
+                        <path class="layer seg-enamel" data-type="enamel" d="M 54,15 Q 64,11 74,15 L 76,35 Q 64,38 52,35 Z"/>
+                        <!-- Dentin -->
+                        <path class="layer seg-dentin" data-type="dentin" d="M 56,18 Q 64,15 72,18 L 74,60 Q 76,80 72,90 Q 68,93 64,91 Q 60,93 56,90 Q 54,80 54,60 Z"/>
+                        <!-- Pulp -->
+                        <path class="layer seg-pulp" data-type="pulp" d="M 62,22 Q 64,20 66,22 L 66,70 Q 64,85 62,92"/>
+                        
+                        <!-- Bone level (red line) -->
+                        <line class="layer seg-bone" data-type="bone" x1="14" y1="72" x2="44" y2="72"/>
+                        <line class="layer seg-bone" data-type="bone" x1="52" y1="70" x2="78" y2="70"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT - Report -->
+        <div class="report" id="reportPanel">
+            <div class="report-header">
+                <span>▼</span>
+                <span>Dental analysis report</span>
+            </div>
+            <div class="report-content">
+                <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
+                    Upload an X-ray to see the analysis report
+                </p>
+            </div>
         </div>
     </div>
 
@@ -145,12 +498,120 @@
             
             const reader = new FileReader();
             reader.onload = function(event) {
-                document.getElementById('uploadPrompt').classList.add('hidden');
+                document.getElementById('placeholder').classList.add('hidden');
                 document.getElementById('imageContainer').classList.remove('hidden');
                 document.getElementById('xrayImage').src = event.target.result;
+                showReport();
             };
             reader.readAsDataURL(file);
         });
+        
+        function showReport() {
+            document.getElementById('reportPanel').innerHTML = `
+                <div class="report-header">
+                    <span>▼</span>
+                    <span>Dental analysis report</span>
+                </div>
+                <div class="report-content">
+                    <div class="patient-name">Leo aren</div>
+                    <div class="patient-info">ID: PAT-001 • 24 years • Male</div>
+                    
+                    <div class="diagnosis-box">
+                        <div class="diagnosis-title">Diagnosis:</div>
+                        <div class="diagnosis-item">Filling <span class="diagnosis-count">2</span>, Crown <span class="diagnosis-count">1</span>, Root canal therapy <span class="diagnosis-count">1</span>,</div>
+                        <div class="diagnosis-item">Periapical periodontitis <span class="diagnosis-count">1</span></div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-row">
+                            ${[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28].map(n => 
+                                `<div class="tooth-box">${n}</div>`
+                            ).join('')}
+                        </div>
+                        <div class="chart-labels">
+                            ${[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28].map(n => 
+                                `<span>${n}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="chart-row" style="margin-top: 8px;">
+                            ${[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38].map(n => {
+                                let cls = '';
+                                if (n === 36) cls = 'problem';
+                                if (n === 35) cls = 'treated';
+                                return `<div class="tooth-box ${cls}">${n}</div>`;
+                            }).join('')}
+                        </div>
+                        <div class="chart-labels">
+                            ${[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38].map(n => 
+                                `<span>${n}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="current-tooth">
+                        <div class="current-tooth-title">Current Tooth</div>
+                        <div class="current-tooth-status">✓ Good tooth</div>
+                    </div>
+                    
+                    <div class="findings-title">Permanent Tooth</div>
+                    
+                    <div class="finding-item">
+                        <div class="tooth-icon">35</div>
+                        <div class="finding-details">
+                            <h4>Tooth #35</h4>
+                            <div class="finding-list">
+                                • Crown<br>
+                                • Root canal therapy
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="finding-item">
+                        <div class="tooth-icon problem">36</div>
+                        <div class="finding-details">
+                            <h4>Tooth #36</h4>
+                            <div class="finding-list">
+                                • Crown<br>
+                                • Root canal therapy<br>
+                                • Filling<br>
+                                • Periapical periodontitis
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="download-btn" onclick="alert('Downloading PDF...')">
+                        ⬇ Download(PDF)
+                    </button>
+                </div>
+            `;
+        }
+        
+        function toggle(type) {
+            const layers = document.querySelectorAll('[data-type="' + type + '"]');
+            layers.forEach(l => {
+                l.style.display = l.style.display === 'none' ? 'block' : 'none';
+            });
+            
+            // Toggle sidebar item
+            event.currentTarget.classList.toggle('active');
+        }
+        
+        function reset() {
+            document.getElementById('placeholder').classList.remove('hidden');
+            document.getElementById('imageContainer').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('reportPanel').innerHTML = `
+                <div class="report-header">
+                    <span>▼</span>
+                    <span>Dental analysis report</span>
+                </div>
+                <div class="report-content">
+                    <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
+                        Upload an X-ray to see the analysis report
+                    </p>
+                </div>
+            `;
+        }
     </script>
 </body>
 </html>
