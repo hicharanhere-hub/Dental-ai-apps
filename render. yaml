@@ -1,0 +1,6 @@
+# Add these 2 files to your frontend (I created them):
+# - manifest.json (app configuration)
+# - service-worker.js (offline support)
+
+# Takes 30 minutes to implement
+# Full guide: deployment-strategies/PWA-IMPLEMENTATION-GUIDE.md
