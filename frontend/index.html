@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DentalAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: system-ui; background: #0f172a; color: white; }
+        .glass { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold mb-4 text-center">🦷 DentalAI</h1>
+        <div class="glass rounded-xl p-6 text-center">
+            <p class="text-gray-400 mb-4">X-Ray Analysis Ready</p>
+            <input type="file" id="file" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('file').click()" class="bg-blue-600 px-6 py-3 rounded-lg w-full">
+                Upload X-Ray
+            </button>
+        </div>
+    </div>
+    <script>
+        document.getElementById('file').addEventListener('change', (e) => {
+            if(e.target.files[0]) alert('File selected: ' + e.target.files[0].name);
+        });
+    </script>
+</body>
+</html>
